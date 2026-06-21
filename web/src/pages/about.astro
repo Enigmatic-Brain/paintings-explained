@@ -1,0 +1,38 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base
+  title="About"
+  description="Why Paintings Explained exists — making the hidden details in great art visible to everyone."
+>
+  <section class="section container about">
+    <p class="eyebrow">About</p>
+    <h1>Great paintings are full of secrets. We point them out.</h1>
+    <p>
+      People stand in front of certain paintings for hours. Not because of the
+      brushwork alone, but because the longer you look, the more you find — a
+      hidden skull, a self-portrait tucked into a crowd, a coded message in a
+      mirror, a gesture that changes the whole story.
+    </p>
+    <p>
+      <strong>Paintings Explained</strong> collects those masterpieces and shows
+      you exactly what to look for. Zoom into ultra–high-resolution images, tap
+      the markers to reveal hidden details, and read short, plain-language
+      explanations of why each painting rewards a slow, careful look.
+    </p>
+    <p>
+      Every image here is in the public domain (CC0), drawn from the open-access
+      collections of <a href="https://www.metmuseum.org/about-the-met/policies-and-documents/open-access" rel="noopener">The Metropolitan Museum of Art</a>
+      and the <a href="https://www.artic.edu/open-access/open-access-images" rel="noopener">Art Institute of Chicago</a> —
+      so you're free to look as closely as you like.
+    </p>
+    <p><a class="btn btn--primary" href="/paintings">Start exploring</a></p>
+  </section>
+</Base>
+
+<style>
+  .about { max-width: 760px; display: grid; gap: var(--space-4); }
+  .about h1 { margin-block: var(--space-2) var(--space-4); }
+  .about p { font-size: var(--fs-500); }
+  .about .btn { margin-top: var(--space-4); }
+</style>

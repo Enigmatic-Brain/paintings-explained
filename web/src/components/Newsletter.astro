@@ -1,0 +1,58 @@
+---
+// Newsletter signup. Point `action` at your provider's form endpoint
+// (e.g. Buttondown: https://buttondown.email/api/emails/embed-subscribe/USERNAME).
+// Until then it falls back to a mailto: so the control is never dead.
+const action = import.meta.env.NEWSLETTER_ACTION || 'mailto:hello@example.com';
+const isMailto = action.startsWith('mailto:');
+---
+<section class="newsletter" aria-labelledby="nl-title">
+  <div class="newsletter__text">
+    <h2 id="nl-title">One hidden detail, every week</h2>
+    <p>
+      Join the list to get a single fascinating painting — and the secret most
+      people walk right past — in your inbox.
+    </p>
+  </div>
+  <form class="newsletter__form" method={isMailto ? 'get' : 'post'} action={action} target="_blank">
+    <label class="visually-hidden" for="nl-email">Email address</label>
+    <input
+      id="nl-email"
+      type="email"
+      name="email"
+      inputmode="email"
+      autocomplete="email"
+      required
+      placeholder="you@example.com"
+    />
+    <button class="btn btn--primary" type="submit">Subscribe</button>
+  </form>
+</section>
+
+<style>
+  .newsletter {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-8);
+    display: grid;
+    gap: var(--space-6);
+  }
+  .newsletter h2 { font-size: var(--fs-700); }
+  .newsletter p { color: var(--color-ink-muted); margin-top: var(--space-2); }
+  .newsletter__form { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .newsletter__form input {
+    flex: 1 1 220px;
+    min-height: 44px;
+    padding: var(--space-2) var(--space-4);
+    font: inherit;
+    color: var(--color-ink);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
+  .newsletter__form input:focus-visible { border-color: var(--color-focus); }
+  @media (min-width: 768px) {
+    .newsletter { grid-template-columns: 1fr auto; align-items: center; }
+    .newsletter__form { flex-wrap: nowrap; min-width: 380px; }
+  }
+</style>

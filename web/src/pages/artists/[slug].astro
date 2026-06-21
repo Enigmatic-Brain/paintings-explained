@@ -1,0 +1,40 @@
+---
+import Base from '../../layouts/Base.astro';
+import PaintingCard from '../../components/PaintingCard.astro';
+import { listPaintings, getArtistBySlug } from '../../lib/queries';
+
+const { slug } = Astro.params;
+const [artist, paintings] = await Promise.all([
+  slug ? getArtistBySlug(slug) : null,
+  listPaintings({ artist: slug }),
+]);
+
+if (!artist && paintings.length === 0) {
+  return new Response(null, { status: 404, statusText: 'Not Found' });
+}
+const name = artist?.name ?? paintings[0]?.artist?.name ?? 'Artist';
+const lifespan = [artist?.birth_year, artist?.death_year].filter(Boolean).join('–');
+---
+<Base title={name} description={`Paintings by ${name}, explained — with their hidden details.`}>
+  <section class="section container">
+    <p class="eyebrow">Artist</p>
+    <h1>{name}</h1>
+    <p class="meta">
+      {artist?.nationality}{artist?.nationality && lifespan ? ' · ' : ''}{lifespan}
+    </p>
+    {artist?.bio && <p class="bio">{artist.bio}</p>}
+
+    <div class="grid">
+      {paintings.map((p) => <PaintingCard painting={p} />)}
+    </div>
+  </section>
+</Base>
+
+<style>
+  h1 { margin-block: var(--space-2); }
+  .meta { color: var(--color-ink-muted); }
+  .bio { margin-block: var(--space-4) var(--space-8); font-size: var(--fs-500); }
+  .grid { display: grid; gap: var(--space-6); grid-template-columns: 1fr; margin-top: var(--space-8); }
+  @media (min-width: 560px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 900px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+</style>

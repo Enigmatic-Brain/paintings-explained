@@ -1,0 +1,17 @@
+# Python
+ingest/.venv/
+__pycache__/
+*.pyc
+
+# Secrets — never commit
+.env
+**/.env
+
+# Node / Astro
+web/node_modules/
+web/dist/
+web/.astro/
+web/.vercel/
+
+# OS
+.DS_Store

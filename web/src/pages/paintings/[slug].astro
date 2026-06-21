@@ -1,0 +1,149 @@
+---
+import { marked } from 'marked';
+import Base from '../../layouts/Base.astro';
+import PaintingViewer from '../../components/PaintingViewer.astro';
+import PaintingCard from '../../components/PaintingCard.astro';
+import { getPainting, getRelated, movementSlug } from '../../lib/queries';
+
+const { slug } = Astro.params;
+const painting = slug ? await getPainting(slug) : null;
+
+if (!painting) {
+  return new Response(null, { status: 404, statusText: 'Not Found' });
+}
+
+const related = await getRelated(painting, 3);
+const bodyHtml = painting.body ? marked.parse(painting.body) : '';
+const shareUrl = new URL(Astro.url.pathname, Astro.site).href;
+const shareText = `${painting.title}${painting.artist ? ' by ' + painting.artist.name : ''} — the hidden details`;
+
+const enc = encodeURIComponent;
+const shares = [
+  { label: 'Pinterest', href: `https://pinterest.com/pin/create/button/?url=${enc(shareUrl)}&media=${enc(painting.image_url)}&description=${enc(shareText)}` },
+  { label: 'X', href: `https://twitter.com/intent/tweet?url=${enc(shareUrl)}&text=${enc(shareText)}` },
+  { label: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${enc(shareUrl)}` },
+];
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'VisualArtwork',
+  name: painting.title,
+  image: painting.image_url,
+  ...(painting.artist && { creator: { '@type': 'Person', name: painting.artist.name } }),
+  ...(painting.year && { dateCreated: painting.year }),
+  ...(painting.medium && { artMedium: painting.medium }),
+  ...(painting.museum && { locationCreated: { '@type': 'Place', name: painting.museum } }),
+  ...(painting.summary && { description: painting.summary }),
+  isAccessibleForFree: true,
+  license: 'https://creativecommons.org/publicdomain/zero/1.0/',
+};
+---
+<Base
+  title={painting.title}
+  description={painting.summary ?? `${painting.title} by ${painting.artist?.name ?? 'unknown'} — explained.`}
+  image={painting.image_url}
+  type="article"
+  jsonLd={jsonLd}
+>
+  <article class="container detail">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="/paintings">Browse</a> <span aria-hidden="true">/</span> <span>{painting.title}</span>
+    </nav>
+
+    <header class="detail__head">
+      <h1>{painting.title}</h1>
+      <p class="detail__byline">
+        {painting.artist && <a href={`/artists/${painting.artist.slug}`}>{painting.artist.name}</a>}
+        {painting.year && <span> · {painting.year}</span>}
+      </p>
+      <ul class="detail__facts">
+        {painting.movement && (
+          <li><a class="tag" href={`/movements/${movementSlug(painting.movement)}`}>{painting.movement}</a></li>
+        )}
+        {painting.medium && <li>{painting.medium}</li>}
+        {painting.museum && <li>{painting.museum}</li>}
+      </ul>
+    </header>
+
+    <PaintingViewer painting={painting} />
+
+    <div class="detail__body">
+      {painting.why_watch && (
+        <section class="why" aria-labelledby="why-title">
+          <h2 id="why-title">Why people watch it for hours</h2>
+          <p>{painting.why_watch}</p>
+        </section>
+      )}
+
+      {bodyHtml && (
+        <section class="prose" set:html={bodyHtml} />
+      )}
+
+      <section class="share" aria-label="Share this painting">
+        <span class="eyebrow">Share</span>
+        <ul>
+          {shares.map((s) => (
+            <li><a class="btn btn--secondary" href={s.href} target="_blank" rel="noopener">{s.label}</a></li>
+          ))}
+        </ul>
+      </section>
+
+      <p class="credit">
+        Image: public domain (CC0){painting.credit ? `, ${painting.credit}` : ''}
+        {painting.museum ? `, ${painting.museum}` : ''}.
+      </p>
+    </div>
+
+    {related.length > 0 && (
+      <section class="section related">
+        <h2>Keep exploring</h2>
+        <div class="grid">
+          {related.map((p) => <PaintingCard painting={p} />)}
+        </div>
+      </section>
+    )}
+  </article>
+</Base>
+
+<style>
+  .detail { padding-block: var(--space-8) var(--space-16); display: grid; gap: var(--space-8); }
+  .crumbs { font-size: var(--fs-300); color: var(--color-ink-muted); }
+  .crumbs span:last-child { color: var(--color-ink-muted); }
+
+  .detail__head { display: grid; gap: var(--space-2); }
+  .detail__byline { font-size: var(--fs-500); color: var(--color-ink-muted); }
+  .detail__byline a { font-weight: 600; }
+  .detail__facts {
+    list-style: none; padding: 0; margin-top: var(--space-2);
+    display: flex; flex-wrap: wrap; gap: var(--space-2);
+    font-size: var(--fs-300); color: var(--color-ink-muted);
+    align-items: center;
+  }
+  .detail__facts li { display: inline-flex; }
+  .tag {
+    background: var(--color-surface-2);
+    padding: var(--space-1) var(--space-3);
+    border-radius: 999px;
+    text-decoration: none;
+    color: var(--color-ink);
+    font-weight: 600;
+  }
+
+  .detail__body { display: grid; gap: var(--space-8); max-width: var(--measure); }
+  .why h2 { font-size: var(--fs-700); margin-bottom: var(--space-3); }
+  .why p { font-size: var(--fs-500); }
+
+  .prose { display: grid; gap: var(--space-4); }
+  .prose :global(h2) { font-size: var(--fs-700); margin-top: var(--space-4); }
+  .prose :global(p) { max-width: var(--measure); }
+  .prose :global(em) { font-style: italic; }
+
+  .share ul { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+  .credit { font-size: var(--fs-300); color: var(--color-ink-muted); }
+
+  .related { border-top: 1px solid var(--color-border); padding-top: var(--space-8); }
+  .related h2 { margin-bottom: var(--space-6); }
+  .grid { display: grid; gap: var(--space-6); grid-template-columns: 1fr; }
+  @media (min-width: 560px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 900px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+</style>

@@ -1,0 +1,32 @@
+---
+import Base from '../../layouts/Base.astro';
+import PaintingCard from '../../components/PaintingCard.astro';
+import { listPaintings, getMovementFacets, movementSlug } from '../../lib/queries';
+
+const { slug } = Astro.params;
+const movements = await getMovementFacets();
+const match = movements.find((m) => movementSlug(m.value) === slug);
+const paintings = match ? await listPaintings({ movement: match.value }) : [];
+
+if (!match) {
+  return new Response(null, { status: 404, statusText: 'Not Found' });
+}
+---
+<Base title={match.value} description={`${match.value} paintings, explained — with the hidden details inside each one.`}>
+  <section class="section container">
+    <p class="eyebrow">Movement / era</p>
+    <h1>{match.value}</h1>
+    <p class="meta">{paintings.length} {paintings.length === 1 ? 'painting' : 'paintings'}</p>
+    <div class="grid">
+      {paintings.map((p) => <PaintingCard painting={p} />)}
+    </div>
+  </section>
+</Base>
+
+<style>
+  h1 { margin-block: var(--space-2); }
+  .meta { color: var(--color-ink-muted); }
+  .grid { display: grid; gap: var(--space-6); grid-template-columns: 1fr; margin-top: var(--space-8); }
+  @media (min-width: 560px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 900px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+</style>

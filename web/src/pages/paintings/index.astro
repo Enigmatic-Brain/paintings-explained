@@ -1,0 +1,125 @@
+---
+import Base from '../../layouts/Base.astro';
+import PaintingCard from '../../components/PaintingCard.astro';
+import { listPaintings, getMovementFacets, getArtistFacets } from '../../lib/queries';
+
+const params = Astro.url.searchParams;
+const movement = params.get('movement') ?? undefined;
+const artist = params.get('artist') ?? undefined;
+const q = params.get('q')?.trim() || undefined;
+
+const [paintings, movements, artists] = await Promise.all([
+  listPaintings({ movement, artist, q }),
+  getMovementFacets(),
+  getArtistFacets(),
+]);
+
+const hasFilter = Boolean(movement || artist || q);
+const buildHref = (next: Record<string, string | undefined>) => {
+  const sp = new URLSearchParams();
+  const merged = { movement, artist, q, ...next };
+  for (const [k, v] of Object.entries(merged)) if (v) sp.set(k, v);
+  const s = sp.toString();
+  return s ? `/paintings?${s}` : '/paintings';
+};
+---
+<Base
+  title="Browse paintings"
+  description="Browse famous public-domain paintings by artist and era, and discover the hidden details inside each one."
+>
+  <section class="section container">
+    <header class="browse__head">
+      <h1>Browse the collection</h1>
+      <p class="browse__count">{paintings.length} {paintings.length === 1 ? 'painting' : 'paintings'}</p>
+    </header>
+
+    <form class="search" role="search" method="get" action="/paintings">
+      {movement && <input type="hidden" name="movement" value={movement} />}
+      {artist && <input type="hidden" name="artist" value={artist} />}
+      <label class="visually-hidden" for="q">Search paintings by title</label>
+      <input id="q" name="q" type="search" value={q ?? ''} placeholder="Search by title…" />
+      <button class="btn btn--primary" type="submit">Search</button>
+    </form>
+
+    <div class="filters" aria-label="Filters">
+      <div class="filters__group">
+        <span class="eyebrow">Era / movement</span>
+        <ul class="chips">
+          <li><a class={`chip ${!movement ? 'chip--on' : ''}`} href={buildHref({ movement: undefined })}>All</a></li>
+          {movements.map((m) => (
+            <li><a class={`chip ${movement === m.value ? 'chip--on' : ''}`} href={buildHref({ movement: m.value })}>{m.label} <span>{m.count}</span></a></li>
+          ))}
+        </ul>
+      </div>
+      <div class="filters__group">
+        <span class="eyebrow">Artist</span>
+        <ul class="chips">
+          <li><a class={`chip ${!artist ? 'chip--on' : ''}`} href={buildHref({ artist: undefined })}>All</a></li>
+          {artists.map((a) => (
+            <li><a class={`chip ${artist === a.value ? 'chip--on' : ''}`} href={buildHref({ artist: a.value })}>{a.label} <span>{a.count}</span></a></li>
+          ))}
+        </ul>
+      </div>
+      {hasFilter && <a class="filters__clear" href="/paintings">Clear filters</a>}
+    </div>
+
+    {paintings.length > 0 ? (
+      <div class="grid">
+        {paintings.map((p, i) => <PaintingCard painting={p} eager={i < 4} />)}
+      </div>
+    ) : (
+      <p class="empty">No paintings match those filters yet. <a href="/paintings">Clear filters</a> to see everything.</p>
+    )}
+  </section>
+</Base>
+
+<style>
+  .browse__head { display: flex; align-items: baseline; gap: var(--space-4); flex-wrap: wrap; }
+  .browse__count { color: var(--color-ink-muted); }
+
+  .search { display: flex; gap: var(--space-2); margin-block: var(--space-6); max-width: 520px; }
+  .search input {
+    flex: 1;
+    min-height: 44px;
+    padding: var(--space-2) var(--space-4);
+    font: inherit;
+    color: var(--color-ink);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
+  .search input:focus-visible { border-color: var(--color-focus); }
+
+  .filters { display: grid; gap: var(--space-4); margin-bottom: var(--space-8); }
+  .filters__group { display: grid; gap: var(--space-2); }
+  .chips { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-height: 36px;
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-surface);
+    color: var(--color-ink);
+    text-decoration: none;
+    font-size: var(--fs-300);
+    font-weight: 500;
+  }
+  .chip span { color: var(--color-ink-muted); }
+  .chip:hover { border-color: var(--color-accent); color: var(--color-ink); }
+  .chip--on { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+  .chip--on span { color: rgba(255, 255, 255, 0.8); }
+  .filters__clear { font-size: var(--fs-300); font-weight: 600; }
+
+  .grid {
+    display: grid;
+    gap: var(--space-6);
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 560px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 900px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+
+  .empty { color: var(--color-ink-muted); padding-block: var(--space-8); }
+</style>

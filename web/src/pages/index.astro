@@ -1,0 +1,109 @@
+---
+import Base from '../layouts/Base.astro';
+import PaintingCard from '../components/PaintingCard.astro';
+import Newsletter from '../components/Newsletter.astro';
+import { getPaintingOfTheDay, getFeatured } from '../lib/queries';
+
+const potd = await getPaintingOfTheDay();
+const featured = await getFeatured(6);
+const rest = featured.filter((p) => p.id !== potd?.id).slice(0, 4);
+---
+<Base
+  title="Paintings Explained"
+  description="The hidden symbols, secret details, and reasons people stare at famous paintings for hours — explained, one masterpiece at a time."
+  image={potd?.image_url}
+>
+  <section class="hero container">
+    <p class="eyebrow">See what's hidden in plain sight</p>
+    <h1>The secrets inside the world's most-watched paintings.</h1>
+    <p class="hero__lede">
+      Every great painting hides things most people walk right past — a skull, a
+      self-portrait, a coded message. Zoom in, tap the markers, and discover why
+      these masterpieces reward hours of looking.
+    </p>
+    <a class="btn btn--primary" href="/paintings">Start exploring</a>
+  </section>
+
+  {potd && (
+    <section class="section container">
+      <p class="eyebrow">Painting of the day</p>
+      <a class="potd" href={`/paintings/${potd.slug}`}>
+        <div class="potd__media">
+          <img src={potd.image_url} alt={`${potd.title} by ${potd.artist?.name ?? 'unknown'}`} loading="eager" />
+        </div>
+        <div class="potd__text">
+          <h2>{potd.title}</h2>
+          <p class="potd__meta">{potd.artist?.name}{potd.year ? ` · ${potd.year}` : ''}</p>
+          {potd.summary && <p class="potd__summary">{potd.summary}</p>}
+          <span class="potd__cta">Explore the hidden details →</span>
+        </div>
+      </a>
+    </section>
+  )}
+
+  {rest.length > 0 && (
+    <section class="section container">
+      <div class="section__head">
+        <h2>Featured</h2>
+        <a href="/paintings">Browse all →</a>
+      </div>
+      <div class="grid">
+        {rest.map((p) => <PaintingCard painting={p} />)}
+      </div>
+    </section>
+  )}
+
+  <section class="section container">
+    <Newsletter />
+  </section>
+</Base>
+
+<style>
+  .hero { padding-block: var(--space-16) var(--space-12); max-width: 880px; }
+  .hero h1 { margin-block: var(--space-3); }
+  .hero__lede {
+    font-size: var(--fs-500);
+    color: var(--color-ink-muted);
+    margin-bottom: var(--space-8);
+  }
+
+  .section__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
+  }
+
+  .potd {
+    display: grid;
+    gap: var(--space-6);
+    margin-top: var(--space-4);
+    text-decoration: none;
+    color: inherit;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: box-shadow var(--transition), transform var(--transition);
+  }
+  .potd:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+  .potd__media { background: var(--color-viewer-bg); }
+  .potd__media img { width: 100%; height: 100%; object-fit: cover; max-height: 520px; }
+  .potd__text { padding: var(--space-8); align-self: center; }
+  .potd__text h2 { font-size: var(--fs-800); }
+  .potd__meta { color: var(--color-ink-muted); margin-block: var(--space-2) var(--space-4); }
+  .potd__summary { font-size: var(--fs-500); }
+  .potd__cta { display: inline-block; margin-top: var(--space-6); color: var(--color-accent); font-weight: 600; }
+
+  .grid {
+    display: grid;
+    gap: var(--space-6);
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 560px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 900px) {
+    .grid { grid-template-columns: repeat(4, 1fr); }
+    .potd { grid-template-columns: 1.3fr 1fr; gap: 0; }
+  }
+</style>

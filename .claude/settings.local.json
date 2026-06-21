@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(brew install *)",
+      "Bash(mkdir -p db/migrations ingest && ls -la)",
+      "Bash(python3 -m venv .venv)",
+      "Bash(./.venv/bin/pip -q install requests python-dotenv)",
+      "Bash(command -v node)",
+      "Bash(./.venv/bin/python ingest.py --dry-run)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:4321/about)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:4321/)",
+      "Bash(curl -s http://localhost:4321/about)",
+      "Bash(grep -i \"paintings\\\\|PGRST\\\\|error\\\\|schema\" /tmp/astro-dev.log | tail -6)",
+      "Read(//private/tmp/**)"
+    ],
+    "additionalDirectories": [
+      "/Users/enigmatic_brain/Documents/paintings-explained/db"
+    ]
+  }
+}

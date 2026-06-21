@@ -1,0 +1,215 @@
+---
+import type { Painting } from '../lib/types';
+interface Props { painting: Painting; }
+const { painting: p } = Astro.props;
+const alt = `${p.title}${p.artist ? ' by ' + p.artist.name : ''}`;
+---
+<figure class="viewer">
+  <div class="viewer__frame">
+    <img class="viewer__img" src={p.image_url} alt={alt} fetchpriority="high" />
+
+    {p.hotspots.length > 0 && (
+      <div class="viewer__hotspots" role="group" aria-label="Hidden details in this painting">
+        {p.hotspots.map((h, i) => (
+          <button
+            type="button"
+            class="hotspot"
+            style={`left:${h.x}%;top:${h.y}%`}
+            data-index={i}
+            aria-pressed="false"
+            aria-label={`Hidden detail ${i + 1}: ${h.title}`}
+          >
+            <span class="hotspot__dot">{i + 1}</span>
+          </button>
+        ))}
+      </div>
+    )}
+
+    <button type="button" class="viewer__zoom btn btn--secondary" data-open-zoom>
+      <span aria-hidden="true">⤢</span> Zoom in to explore
+    </button>
+  </div>
+
+  {p.hotspots.length > 0 && (
+    <figcaption class="viewer__detail" aria-live="polite" data-detail>
+      <p class="viewer__hint">
+        This painting has {p.hotspots.length} hidden {p.hotspots.length === 1 ? 'detail' : 'details'}.
+        Tap a numbered marker to reveal {p.hotspots.length === 1 ? 'it' : 'each one'}.
+      </p>
+    </figcaption>
+  )}
+
+  <script type="application/json" data-hotspots set:html={JSON.stringify(p.hotspots)}></script>
+</figure>
+
+<dialog class="zoom" data-zoom aria-label={`Deep zoom: ${p.title}`}>
+  <div class="zoom__bar">
+    <span class="zoom__hint">Drag to pan · scroll or pinch to zoom</span>
+    <button type="button" class="btn btn--secondary" data-close-zoom>Close <span aria-hidden="true">✕</span></button>
+  </div>
+  <div class="zoom__canvas" data-osd data-image={p.image_url} data-iiif={p.iiif_url ?? ''}></div>
+</dialog>
+
+<style>
+  .viewer { margin: 0; display: grid; gap: var(--space-4); }
+  .viewer__frame {
+    position: relative;
+    background: var(--color-viewer-bg);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+  }
+  .viewer__img { width: 100%; height: auto; display: block; }
+
+  .viewer__hotspots { position: absolute; inset: 0; }
+  .hotspot {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    width: 32px; height: 32px;
+    min-width: 32px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+  .hotspot__dot {
+    display: grid;
+    place-items: center;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    color: #fff;
+    font-size: var(--fs-300);
+    font-weight: 700;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85), var(--shadow-sm);
+    transition: transform var(--transition);
+  }
+  .hotspot::after {
+    /* pulsing ring to draw the eye — disabled under reduced motion */
+    content: '';
+    position: absolute; inset: 2px;
+    border-radius: 50%;
+    border: 2px solid var(--color-accent);
+    animation: pulse 2.2s ease-out infinite;
+  }
+  .hotspot:hover .hotspot__dot,
+  .hotspot:focus-visible .hotspot__dot { transform: scale(1.15); }
+  .hotspot[aria-pressed='true'] .hotspot__dot {
+    background: var(--color-ink);
+    transform: scale(1.15);
+  }
+  @keyframes pulse {
+    0% { transform: scale(1); opacity: 0.7; }
+    70% { transform: scale(1.9); opacity: 0; }
+    100% { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hotspot::after { animation: none; }
+  }
+
+  .viewer__zoom {
+    position: absolute;
+    right: var(--space-2);
+    bottom: var(--space-2);
+    background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  }
+
+  .viewer__detail {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-left: 3px solid var(--color-accent);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    min-height: 92px;
+  }
+  .viewer__detail :global(h3) { font-size: var(--fs-600); margin-bottom: var(--space-1); }
+  .viewer__detail :global(p) { color: var(--color-ink); max-width: var(--measure); }
+  .viewer__hint { color: var(--color-ink-muted) !important; font-size: var(--fs-300); }
+
+  /* Deep-zoom dialog */
+  .zoom {
+    width: min(96vw, 1400px);
+    height: 92vh;
+    max-width: none;
+    max-height: none;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: var(--color-viewer-bg);
+    overflow: hidden;
+  }
+  .zoom::backdrop { background: rgba(10, 8, 6, 0.7); }
+  .zoom__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-2) var(--space-3);
+    color: #efe9e0;
+  }
+  .zoom__hint { font-size: var(--fs-300); color: #cfc7ba; }
+  .zoom__canvas { position: absolute; inset: 48px 0 0 0; }
+</style>
+
+<script>
+  // --- Hotspots: reveal the hidden-detail text for the selected marker ---
+  document.querySelectorAll<HTMLElement>('.viewer').forEach((viewer) => {
+    const dataEl = viewer.querySelector<HTMLScriptElement>('[data-hotspots]');
+    const detail = viewer.querySelector<HTMLElement>('[data-detail]');
+    if (!dataEl || !detail) return;
+    const hotspots: { title: string; detail: string }[] = JSON.parse(dataEl.textContent || '[]');
+    const buttons = Array.from(viewer.querySelectorAll<HTMLButtonElement>('.hotspot'));
+
+    const select = (index: number) => {
+      buttons.forEach((b, i) => b.setAttribute('aria-pressed', String(i === index)));
+      const h = hotspots[index];
+      detail.innerHTML = `<h3>${h.title}</h3><p>${h.detail}</p>`;
+      if (window.matchMedia('(max-width: 767px)').matches) {
+        detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    };
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => select(Number(btn.dataset.index)));
+    });
+  });
+
+  // --- Deep zoom: load OpenSeadragon only when the viewer is opened ---
+  document.querySelectorAll<HTMLElement>('.viewer').forEach((viewer) => {
+    const dialog = viewer.parentElement?.querySelector<HTMLDialogElement>('[data-zoom]')
+      ?? document.querySelector<HTMLDialogElement>('[data-zoom]');
+    const openBtn = viewer.querySelector<HTMLButtonElement>('[data-open-zoom]');
+    if (!dialog || !openBtn) return;
+    const closeBtn = dialog.querySelector<HTMLButtonElement>('[data-close-zoom]');
+    const osdEl = dialog.querySelector<HTMLElement>('[data-osd]');
+    let viewerInstance: any = null;
+
+    openBtn.addEventListener('click', async () => {
+      dialog.showModal();
+      if (!viewerInstance && osdEl) {
+        const { default: OpenSeadragon } = await import('openseadragon');
+        // `data-iiif` holds either an IIIF info.json (tiled) or a plain high-res
+        // image URL (single-image mode). Fall back to the display image.
+        const zoom = osdEl.dataset.iiif;
+        const tileSources = zoom && zoom.includes('/info.json')
+          ? zoom
+          : { type: 'image', url: (zoom || osdEl.dataset.image) as string };
+        viewerInstance = OpenSeadragon({
+          element: osdEl,
+          tileSources,
+          showNavigationControl: false,
+          gestureSettingsTouch: { pinchToZoom: true, flickEnabled: true },
+          visibilityRatio: 1,
+          minZoomImageRatio: 0.8,
+          maxZoomPixelRatio: 2.5,
+          animationTime: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 0.8,
+        });
+      }
+    });
+    closeBtn?.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', (e) => {
+      // click on the backdrop (outside the canvas/bar) closes
+      if (e.target === dialog) dialog.close();
+    });
+  });
+</script>
