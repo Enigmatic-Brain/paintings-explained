@@ -31,15 +31,23 @@ const enabled = Boolean(action && action.startsWith('https://'));
     <input type="hidden" name="embed" value="1" />
     <input type="hidden" name="fingerprint_visitor_id" value="" data-fp-visitor-id />
     <input type="hidden" name="fingerprint_request_id" value="" data-fp-request-id />
+    <input type="hidden" name="fingerprint_risk_decision" value="" data-fp-risk-decision />
+    <input type="hidden" name="fingerprint_risk_reasons" value="" data-fp-risk-reasons />
     <button class="btn btn--primary" type="submit" disabled={!enabled}>Subscribe</button>
   </form>
   {!enabled && <p id="nl-note" class="newsletter__note">Sign-up opens soon.</p>}
+  {enabled && <p class="newsletter__note newsletter__note--risk" data-fp-risk-note hidden></p>}
 </section>
 
 <script is:inline>
   const form = document.querySelector('.newsletter__form');
   const visitorInput = form?.querySelector('[data-fp-visitor-id]');
   const requestInput = form?.querySelector('[data-fp-request-id]');
+  const decisionInput = form?.querySelector('[data-fp-risk-decision]');
+  const reasonsInput = form?.querySelector('[data-fp-risk-reasons]');
+  const noteEl = document.querySelector('[data-fp-risk-note]');
+  const submitButton = form?.querySelector('button[type="submit"]');
+  let bypassRiskCheck = false;
 
   function applyFingerprint(result) {
     if (!result || !visitorInput || !requestInput) return;
@@ -54,6 +62,48 @@ const enabled = Boolean(action && action.startsWith('https://'));
 
   // Main path when Fingerprint resolves after this script.
   window.addEventListener('fp:identified', (event) => applyFingerprint(event.detail));
+
+  form?.addEventListener('submit', async (event) => {
+    if (bypassRiskCheck) return;
+    const requestId = requestInput?.value?.trim();
+    if (!requestId) return;
+
+    event.preventDefault();
+    if (noteEl) noteEl.hidden = true;
+    if (submitButton) submitButton.disabled = true;
+
+    try {
+      const response = await fetch('/api/fingerprint/risk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId }),
+      });
+
+      if (!response.ok) throw new Error(`risk-check-${response.status}`);
+
+      const data = await response.json();
+      decisionInput && (decisionInput.value = data.decision || 'allow');
+      reasonsInput && (reasonsInput.value = Array.isArray(data.reasons) ? data.reasons.join(',') : '');
+
+      if (data.decision === 'block') {
+        if (noteEl) {
+          noteEl.textContent = 'Sign-up blocked for this request due to high-risk fingerprint signals.';
+          noteEl.hidden = false;
+        }
+        if (submitButton) submitButton.disabled = false;
+        return;
+      }
+
+      bypassRiskCheck = true;
+      form.requestSubmit(submitButton || undefined);
+    } catch (_error) {
+      // Fail open so real users are not blocked if risk API is temporarily unavailable.
+      decisionInput && (decisionInput.value = 'unavailable');
+      reasonsInput && (reasonsInput.value = 'risk_api_unavailable');
+      bypassRiskCheck = true;
+      form.requestSubmit(submitButton || undefined);
+    }
+  });
 </script>
 
 <style>

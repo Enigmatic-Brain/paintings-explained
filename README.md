@@ -93,6 +93,16 @@ PUBLIC_FINGERPRINT_API_KEY=
 PUBLIC_FINGERPRINT_REGION=us
 ```
 
+Optional server-only Fingerprint variables (fraud/risk decisions):
+
+```bash
+FINGERPRINT_SECRET_API_KEY=
+FINGERPRINT_SERVER_API_BASE_URL=
+```
+
+`FINGERPRINT_SECRET_API_KEY` is a secret key and must never use the `PUBLIC_`
+prefix.
+
 ### Importer
 
 Set these in `ingest/.env`. Use [`ingest/.env.example`](ingest/.env.example)
