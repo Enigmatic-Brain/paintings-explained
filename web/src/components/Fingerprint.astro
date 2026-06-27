@@ -6,20 +6,29 @@
 // in the browser and is locked to your domain(s) in the Fingerprint dashboard.
 //
 // Loads the agent straight from Fingerprint's CDN (their recommended no-bundler
-// method); the API key is embedded in the module URL. On success it exposes the
-// visitor id as `window.__visitorId` and fires a `fp:identified` event so other
-// code (e.g. analytics) can react.
+// method); the API key is embedded in the module URL.
+//
+// Uses the v4 API (Fingerprint.start) and normalizes identifiers so downstream
+// code can consistently use camelCase keys.
 const apiKey = import.meta.env.PUBLIC_FINGERPRINT_API_KEY;
 const region = import.meta.env.PUBLIC_FINGERPRINT_REGION || 'us';
 ---
 {apiKey && (
   <script type="module" is:inline define:vars={{ apiKey, region }}>
-    import(`https://fpjscdn.net/v3/${apiKey}`)
-      .then((FingerprintJS) => FingerprintJS.load({ region }))
+    const fpPromise = import(`https://fpjscdn.net/v4/${apiKey}`).then((Fingerprint) =>
+      Fingerprint.start({ region }),
+    );
+
+    fpPromise
       .then((fp) => fp.get())
       .then((result) => {
-        window.__visitorId = result.visitorId;
-        window.dispatchEvent(new CustomEvent('fp:identified', { detail: result }));
+        const visitorId = result.visitor_id ?? result.visitorId ?? null;
+        const requestId = result.event_id ?? result.requestId ?? null;
+        const normalized = { ...result, visitorId, requestId };
+
+        window.__visitorId = visitorId;
+        window.__fingerprintResult = normalized;
+        window.dispatchEvent(new CustomEvent('fp:identified', { detail: normalized }));
       })
       .catch((err) => console.error('[fingerprint]', err));
   </script>

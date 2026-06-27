@@ -29,10 +29,32 @@ const enabled = Boolean(action && action.startsWith('https://'));
       aria-describedby={enabled ? undefined : 'nl-note'}
     />
     <input type="hidden" name="embed" value="1" />
+    <input type="hidden" name="fingerprint_visitor_id" value="" data-fp-visitor-id />
+    <input type="hidden" name="fingerprint_request_id" value="" data-fp-request-id />
     <button class="btn btn--primary" type="submit" disabled={!enabled}>Subscribe</button>
   </form>
   {!enabled && <p id="nl-note" class="newsletter__note">Sign-up opens soon.</p>}
 </section>
+
+<script is:inline>
+  const form = document.querySelector('.newsletter__form');
+  const visitorInput = form?.querySelector('[data-fp-visitor-id]');
+  const requestInput = form?.querySelector('[data-fp-request-id]');
+
+  function applyFingerprint(result) {
+    if (!result || !visitorInput || !requestInput) return;
+    if (result.visitorId) visitorInput.value = result.visitorId;
+    if (result.requestId) requestInput.value = result.requestId;
+  }
+
+  // Fast path when Fingerprint resolves before this component script runs.
+  if (window.__fingerprintResult) applyFingerprint(window.__fingerprintResult);
+  // Backward compatibility if only visitor id is available.
+  else if (window.__visitorId && visitorInput) visitorInput.value = window.__visitorId;
+
+  // Main path when Fingerprint resolves after this script.
+  window.addEventListener('fp:identified', (event) => applyFingerprint(event.detail));
+</script>
 
 <style>
   .newsletter {
