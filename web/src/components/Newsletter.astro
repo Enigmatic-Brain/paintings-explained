@@ -1,9 +1,11 @@
 ---
-// Newsletter signup. Point `action` at your provider's form endpoint
-// (e.g. Buttondown: https://buttondown.email/api/emails/embed-subscribe/USERNAME).
-// Until then it falls back to a mailto: so the control is never dead.
-const action = import.meta.env.NEWSLETTER_ACTION || 'mailto:hello@example.com';
-const isMailto = action.startsWith('mailto:');
+// Newsletter signup. Set NEWSLETTER_ACTION to your provider's HTTPS form
+// endpoint (e.g. Buttondown:
+// https://buttondown.email/api/emails/embed-subscribe/USERNAME).
+// Until that's set the form is shown disabled — never a mailto:, which browsers
+// flag as "not secure".
+const action = import.meta.env.NEWSLETTER_ACTION;
+const enabled = Boolean(action && action.startsWith('https://'));
 ---
 <section class="newsletter" aria-labelledby="nl-title">
   <div class="newsletter__text">
@@ -13,7 +15,7 @@ const isMailto = action.startsWith('mailto:');
       people walk right past — in your inbox.
     </p>
   </div>
-  <form class="newsletter__form" method={isMailto ? 'get' : 'post'} action={action} target="_blank">
+  <form class="newsletter__form" method="post" action={enabled ? action : undefined} target="_blank">
     <label class="visually-hidden" for="nl-email">Email address</label>
     <input
       id="nl-email"
@@ -23,9 +25,13 @@ const isMailto = action.startsWith('mailto:');
       autocomplete="email"
       required
       placeholder="you@example.com"
+      disabled={!enabled}
+      aria-describedby={enabled ? undefined : 'nl-note'}
     />
-    <button class="btn btn--primary" type="submit">Subscribe</button>
+    <input type="hidden" name="embed" value="1" />
+    <button class="btn btn--primary" type="submit" disabled={!enabled}>Subscribe</button>
   </form>
+  {!enabled && <p id="nl-note" class="newsletter__note">Sign-up opens soon.</p>}
 </section>
 
 <style>
@@ -39,6 +45,7 @@ const isMailto = action.startsWith('mailto:');
   }
   .newsletter h2 { font-size: var(--fs-700); }
   .newsletter p { color: var(--color-ink-muted); margin-top: var(--space-2); }
+  .newsletter__note { font-size: var(--fs-300); }
   .newsletter__form { display: flex; flex-wrap: wrap; gap: var(--space-2); }
   .newsletter__form input {
     flex: 1 1 220px;

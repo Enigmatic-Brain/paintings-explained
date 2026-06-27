@@ -1,0 +1,26 @@
+---
+// Fingerprint Pro — cookieless visitor identification.
+//
+// Inert unless PUBLIC_FINGERPRINT_API_KEY is set, so it's safe to ship before
+// you've signed up. The key is a *public* (publishable) key — it's meant to be
+// in the browser and is locked to your domain(s) in the Fingerprint dashboard.
+//
+// Loads the agent straight from Fingerprint's CDN (their recommended no-bundler
+// method); the API key is embedded in the module URL. On success it exposes the
+// visitor id as `window.__visitorId` and fires a `fp:identified` event so other
+// code (e.g. analytics) can react.
+const apiKey = import.meta.env.PUBLIC_FINGERPRINT_API_KEY;
+const region = import.meta.env.PUBLIC_FINGERPRINT_REGION || 'us';
+---
+{apiKey && (
+  <script type="module" is:inline define:vars={{ apiKey, region }}>
+    import(`https://fpjscdn.net/v3/${apiKey}`)
+      .then((FingerprintJS) => FingerprintJS.load({ region }))
+      .then((fp) => fp.get())
+      .then((result) => {
+        window.__visitorId = result.visitorId;
+        window.dispatchEvent(new CustomEvent('fp:identified', { detail: result }));
+      })
+      .catch((err) => console.error('[fingerprint]', err));
+  </script>
+)}
